@@ -12,9 +12,17 @@ if not TOKEN:
 
 PREFIX = "!"
 
+# ── Proxy config ─────────────────────────────────────────────────────────────
+# Set YDL_PROXY in your environment, e.g.:
+#   export YDL_PROXY="http://user:pass@host:port"
+# This routes both yt-dlp info extraction AND ffmpeg audio streaming through
+# the proxy — required on Oracle Cloud / other datacenter IPs blocked by YouTube.
+_ydl_proxy = os.getenv("YDL_PROXY")
+print(f"[config] Proxy: {_ydl_proxy or 'NOT SET (may fail on Oracle Cloud)'}")
+
 # ── YT-DLP options ──────────────────────────────────────────────────────────
 YDL_OPTS = {
-    "format": "bestaudio[ext=webm]/bestaudio/best",
+    "format": "bestaudio/best",
     "quiet": True,
     "no_warnings": True,
     "noplaylist": True,
@@ -22,14 +30,24 @@ YDL_OPTS = {
     "geo_bypass": True,
     "socket_timeout": 30,
     "extractor_retries": 3,
+    # tv_embedded doesn't require PO tokens or JS challenge solving — more
+    # reliable on cloud IPs; mweb is the fallback.
+    "extractor_args": {"youtube": {"player_client": ["tv_embedded", "mweb"]}},
+    "proxy": _ydl_proxy or None,
     "http_headers": {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept-Language": "en-US,en;q=0.9",
     },
 }
 
+# Build ffmpeg before_options — include http_proxy when a proxy is configured
+# so that ffmpeg's direct audio stream also goes through the proxy.
+_ffmpeg_before = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin"
+if _ydl_proxy:
+    _ffmpeg_before += f" -http_proxy {_ydl_proxy}"
+
 FFMPEG_OPTS = {
-    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin",
+    "before_options": _ffmpeg_before,
     "options": "-vn",
 }
 
