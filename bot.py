@@ -14,17 +14,24 @@ PREFIX = "!"
 
 # ── YT-DLP options ──────────────────────────────────────────────────────────
 _cookies_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
+_ydl_proxy = os.getenv("YDL_PROXY")  # e.g. http://user:pass@host:port
+
+_cookies_found = os.path.exists(_cookies_path)
+print(f"[config] Proxy  : {_ydl_proxy or 'NOT SET'}")
+print(f"[config] Cookies: {_cookies_path if _cookies_found else 'NOT FOUND'}")
 
 YDL_OPTS = {
     "format": "bestaudio[ext=webm]/bestaudio/best",
-    "quiet": True,
-    "no_warnings": True,
+    "quiet": False,
+    "no_warnings": False,
     "noplaylist": True,
     "skip_download": True,
     "geo_bypass": True,
     "socket_timeout": 30,
     "extractor_retries": 3,
-    "cookiefile": _cookies_path if os.path.exists(_cookies_path) else None,
+    "cookiefile": _cookies_path if _cookies_found else None,
+    "extractor_args": {"youtube": {"player_client": ["ios"]}},
+    "proxy": _ydl_proxy,
     "http_headers": {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept-Language": "en-US,en;q=0.9",
