@@ -38,8 +38,8 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix=PREFIX, intents=intents, help_command=None)
 
-queues: dict[int, deque] = {}
-now_playing: dict[int, dict] = {}
+queues: dict = {}
+now_playing: dict = {}
 
 
 def get_queue(guild_id: int) -> deque:
@@ -49,7 +49,7 @@ def get_queue(guild_id: int) -> deque:
 
 
 # ── Audio fetching ───────────────────────────────────────────────────────────
-async def fetch_track(query: str) -> dict | None:
+async def fetch_track(query: str):
     loop = asyncio.get_event_loop()
 
     def _extract():
@@ -155,7 +155,7 @@ async def on_ready():
     ))
 
 
-async def ensure_voice(ctx: commands.Context) -> discord.VoiceClient | None:
+async def ensure_voice(ctx: commands.Context):
     """Return a valid connected VoiceClient, cleaning up any stale connection first."""
     vc = ctx.voice_client
 
