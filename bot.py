@@ -24,10 +24,21 @@ print(f"[config] Proxy  : {_ydl_proxy or 'NOT SET (may fail on Oracle Cloud)'}")
 # Export cookies.txt from your browser using a Netscape-format cookie exporter
 # (e.g. "Get cookies.txt LOCALLY" Chrome extension) while logged into YouTube,
 # then place cookies.txt next to bot.py.
-# This prevents the "Sign in to confirm you're not a bot" error on cloud IPs.
+# Required on Oracle Cloud — the web player client uses these cookies so
+# YouTube sees an authenticated session instead of a bot.
 _cookies_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
 _cookies_found = os.path.isfile(_cookies_path)
-print(f"[config] Cookies: {_cookies_path if _cookies_found else 'NOT FOUND (bot may be blocked on cloud)'}")
+if _cookies_found:
+    try:
+        with open(_cookies_path, "r", encoding="utf-8", errors="ignore") as _f:
+            _yt_lines = [l for l in _f if "youtube.com" in l or "youtu.be" in l]
+        print(f"[config] Cookies: {_cookies_path} ({len(_yt_lines)} youtube.com entries)")
+        if not _yt_lines:
+            print("[config] WARNING: cookies.txt has NO youtube.com entries — export while on youtube.com!")
+    except Exception as _e:
+        print(f"[config] Cookies: found but could not read — {_e}")
+else:
+    print(f"[config] Cookies: NOT FOUND at {_cookies_path}")
 
 # ── YT-DLP options ──────────────────────────────────────────────────────────
 YDL_OPTS = {
@@ -39,9 +50,9 @@ YDL_OPTS = {
     "geo_bypass": True,
     "socket_timeout": 30,
     "extractor_retries": 3,
-    # tv_embedded doesn't require PO tokens or JS challenge solving — more
-    # reliable on cloud IPs; mweb is the fallback.
-    "extractor_args": {"youtube": {"player_client": ["tv_embedded", "mweb"]}},
+    # web client properly sends cookies for authentication (fixes "Sign in to
+    # confirm you're not a bot"). tv_embedded and mweb are anonymous fallbacks.
+    "extractor_args": {"youtube": {"player_client": ["web", "tv_embedded", "mweb"]}},
     "proxy": _ydl_proxy or None,
     "cookiefile": _cookies_path if _cookies_found else None,
     "http_headers": {
