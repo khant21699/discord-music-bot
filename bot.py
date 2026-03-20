@@ -18,7 +18,16 @@ PREFIX = "!"
 # This routes both yt-dlp info extraction AND ffmpeg audio streaming through
 # the proxy — required on Oracle Cloud / other datacenter IPs blocked by YouTube.
 _ydl_proxy = os.getenv("YDL_PROXY")
-print(f"[config] Proxy: {_ydl_proxy or 'NOT SET (may fail on Oracle Cloud)'}")
+print(f"[config] Proxy  : {_ydl_proxy or 'NOT SET (may fail on Oracle Cloud)'}")
+
+# ── Cookie config ─────────────────────────────────────────────────────────────
+# Export cookies.txt from your browser using a Netscape-format cookie exporter
+# (e.g. "Get cookies.txt LOCALLY" Chrome extension) while logged into YouTube,
+# then place cookies.txt next to bot.py.
+# This prevents the "Sign in to confirm you're not a bot" error on cloud IPs.
+_cookies_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
+_cookies_found = os.path.isfile(_cookies_path)
+print(f"[config] Cookies: {_cookies_path if _cookies_found else 'NOT FOUND (bot may be blocked on cloud)'}")
 
 # ── YT-DLP options ──────────────────────────────────────────────────────────
 YDL_OPTS = {
@@ -34,6 +43,7 @@ YDL_OPTS = {
     # reliable on cloud IPs; mweb is the fallback.
     "extractor_args": {"youtube": {"player_client": ["tv_embedded", "mweb"]}},
     "proxy": _ydl_proxy or None,
+    "cookiefile": _cookies_path if _cookies_found else None,
     "http_headers": {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept-Language": "en-US,en;q=0.9",
