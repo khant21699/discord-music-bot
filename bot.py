@@ -12,9 +12,10 @@ if not TOKEN:
 
 PREFIX = "!"
 
-# ── Proxy & UA ─────────────────────────────────────────────────────────────
+# ── Configuration ──────────────────────────────────────────────────────────
 _ydl_proxy = os.getenv("YDL_PROXY")
-_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+# Use a real Android User-Agent to match the 'android' player client
+_android_ua = "com.google.android.youtube/19.05.36 (Linux; U; Android 14; en_US; Pixel 8 Pro) gzip"
 
 # ── Cookie config ─────────────────────────────────────────────────────────────
 _cookies_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
@@ -31,42 +32,44 @@ if _cookies_found:
 else:
     print(f"[config] Cookies: NOT FOUND at {_cookies_path}")
 
-# ── YT-DLP options ──────────────────────────────────────────────────────────
+# ── YT-DLP Options ──────────────────────────────────────────────────────────
 YDL_OPTS = {
-    # Prioritize 139 (48kbps) or 140 (128kbps) - lower bitrates are less likely to 403
     "format": "139/140/bestaudio/best",
     "quiet": True,
     "no_warnings": True,
     "noplaylist": True,
     "skip_download": True,
-    "geo_bypass": True,
+    "nocheckcertificate": True,
+    "proxy": _ydl_proxy,
+    "cookiefile": _cookies_path if _cookies_found else None,
+    # Use the same UA here as ffmpeg
+    "http_headers": {
+        "User-Agent": _android_ua,
+        "Accept": "*/*",
+        "Connection": "keep-alive",
+    },
     "extractor_args": {
         "youtube": {
-            "player_client": ["ios", "android", "mweb"],
-            "skip": ["dash", "hls"],
+            "player_client": ["android"],
+            "player_skip": ["webpage", "configs"],
         }
-    },
-    "proxy": _ydl_proxy or None,
-    "cookiefile": _cookies_path if _cookies_found else None,
-    "http_headers": { "User-Agent": _user_agent },
-    "source_address": "0.0.0.0",
-    "nocheckcertificate": True,
+    }
 }
 
-# ── FFmpeg options ──────────────────────────────────────────────────────────
-# CRITICAL: We pass the User-Agent as a header and the proxy as a separate flag
+# ── FFmpeg Options ──────────────────────────────────────────────────────────
+# Note: Added -4 to force IPv4 and ensured the header has the proper \r\n
 _ffmpeg_before = (
-    f"-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 "
-    f"-headers 'User-Agent: {_user_agent}\r\n' "
+    f"-4 -headers 'User-Agent: {_android_ua}\r\n"
+    f"Accept: */*\r\n' "
+    f"-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
 )
 
 if _ydl_proxy:
-    # Explicitly add the proxy to the ffmpeg input
-    _ffmpeg_before += f"-http_proxy {_ydl_proxy} "
+    _ffmpeg_before += f" -http_proxy {_ydl_proxy}"
 
 FFMPEG_OPTS = {
     "before_options": _ffmpeg_before,
-    "options": "-vn",
+    "options": "-vn -loglevel warning",
 }
 
 # ── Bot setup ────────────────────────────────────────────────────────────────
