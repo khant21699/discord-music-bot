@@ -42,6 +42,7 @@ else:
 
 # ── YT-DLP options ──────────────────────────────────────────────────────────
 YDL_OPTS = {
+    # Broaden the format search to ensure we catch whatever YouTube allows
     "format": "bestaudio/best",
     "quiet": True,
     "no_warnings": True,
@@ -49,15 +50,19 @@ YDL_OPTS = {
     "skip_download": True,
     "geo_bypass": True,
     "socket_timeout": 30,
-    "extractor_retries": 3,
-    # web client properly sends cookies for authentication (fixes "Sign in to
-    # confirm you're not a bot"). tv_embedded and mweb are anonymous fallbacks.
-    "extractor_args": {"youtube": {"player_client": ["web", "tv_embedded", "mweb"]}},
+    "extractor_retries": 5,
+    # CRITICAL: Use 'ios' and 'android' clients. 
+    # YouTube often blocks 'web' but allows mobile apps to stream.
+    "extractor_args": {
+        "youtube": {
+            "player_client": ["ios", "android", "mweb"],
+            "skip": ["dash", "hls"]
+        }
+    },
     "proxy": _ydl_proxy or None,
     "cookiefile": _cookies_path if _cookies_found else None,
     "http_headers": {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
     },
 }
 
