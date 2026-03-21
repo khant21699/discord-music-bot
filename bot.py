@@ -56,22 +56,20 @@ YDL_OPTS = {
     }
 }
 
-# Use a simple User-Agent that older FFmpeg versions handle well
-_android_ua = "Mozilla/5.0 (Android 14; Mobile; rv:120.0) Gecko/120.0 Firefox/120.0"
-
-# 1. Removed '-4' 
-# 2. Simplified headers to avoid the 'Unrecognized option' error
+# ── FFmpeg Options ──────────────────────────────────────────────────────────
+# Note: Added -4 to force IPv4 and ensured the header has the proper \r\n
 _ffmpeg_before = (
-    f"-headers 'User-Agent: {_android_ua}\r\n' "
-    f"-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 "
+    f"-4 -headers 'User-Agent: {_android_ua}\r\n"
+    f"Accept: */*\r\n' "
+    f"-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
 )
 
 if _ydl_proxy:
-    _ffmpeg_before += f"-http_proxy {_ydl_proxy} "
+    _ffmpeg_before += f" -http_proxy {_ydl_proxy}"
 
 FFMPEG_OPTS = {
     "before_options": _ffmpeg_before,
-    "options": "-vn -loglevel error",
+    "options": "-vn -loglevel warning",
 }
 
 # ── Bot setup ────────────────────────────────────────────────────────────────
