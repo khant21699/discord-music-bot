@@ -72,16 +72,20 @@ YDL_OPTS = {
     "nocheckcertificate": True,
 }
 
-# Build ffmpeg before_options — include http_proxy when a proxy is configured
-# Use the same User-Agent for both yt-dlp and ffmpeg
+# 2. Optimized FFmpeg options for Oracle Cloud
+# Added -headers to pass the User-Agent directly to the HTTP request
+_ffmpeg_before = (
+    f"-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin "
+    f"-headers 'User-Agent: {_user_agent}\r\n' "
+)
 
-_ffmpeg_before = f"-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin -user_agent '{_user_agent}'"
 if _ydl_proxy:
-    _ffmpeg_before += f" -http_proxy {_ydl_proxy}"
+    # Use the proxy for the FFmpeg stream as well
+    _ffmpeg_before += f"-http_proxy {_ydl_proxy} "
 
 FFMPEG_OPTS = {
     "before_options": _ffmpeg_before,
-    "options": "-vn",
+    "options": "-vn -loglevel error", # -loglevel error helps clean up your console
 }
 
 # ── Bot setup ────────────────────────────────────────────────────────────────
