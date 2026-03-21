@@ -40,6 +40,9 @@ if _cookies_found:
 else:
     print(f"[config] Cookies: NOT FOUND at {_cookies_path}")
 
+
+_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
 # ── YT-DLP options ──────────────────────────────────────────────────────────
 YDL_OPTS = {
     # Broaden the format search to ensure we catch whatever YouTube allows
@@ -63,14 +66,16 @@ YDL_OPTS = {
     "proxy": _ydl_proxy or None,
     "cookiefile": _cookies_path if _cookies_found else None,
     "http_headers": {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+        "User-Agent": _user_agent,
     },
     "source_address": "0.0.0.0", # Forces IPv4
+    "nocheckcertificate": True,
 }
 
 # Build ffmpeg before_options — include http_proxy when a proxy is configured
-# so that ffmpeg's direct audio stream also goes through the proxy.
-_ffmpeg_before = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin"
+# Use the same User-Agent for both yt-dlp and ffmpeg
+
+_ffmpeg_before = f"-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin -user_agent '{_user_agent}'"
 if _ydl_proxy:
     _ffmpeg_before += f" -http_proxy {_ydl_proxy}"
 
