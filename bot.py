@@ -14,37 +14,30 @@ if not TOKEN:
 
 PREFIX = "!"
 
-# ── Local FFmpeg Engine Path ────────────────────────────────────────────────
-FFMPEG_EXE = "/home/ubuntu/discord-music-bot/ffmpeg-7.0.2-amd64-static/ffmpeg"
-
-# Verification Check on Startup
-if not os.path.isfile(FFMPEG_EXE):
-    print(f"❌ ERROR: FFmpeg not found at {FFMPEG_EXE}")
-else:
-    _v = subprocess.check_output([FFMPEG_EXE, "-version"]).decode().split('\n')[0]
-    print(f"✅ FFmpeg Engine Verified: {_v}")
-
-# ── Proxy & Headers ─────────────────────────────────────────────────────────
-_ydl_proxy = os.getenv("YDL_PROXY")
-_android_ua = "com.google.android.youtube/19.05.36 (Linux; U; Android 14; en_US; Pixel 8 Pro) gzip"
+# ── YT-DLP options ──────────────────────────────────────────────────────────
 _cookies_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
-_cookies_found = os.path.isfile(_cookies_path)
+_ydl_proxy = os.getenv("YDL_PROXY")  # e.g. http://user:pass@host:port
 
-# ── YT-DLP Options ──────────────────────────────────────────────────────────
+_cookies_found = os.path.exists(_cookies_path)
+print(f"[config] Proxy  : {_ydl_proxy or 'NOT SET'}")
+print(f"[config] Cookies: {_cookies_path if _cookies_found else 'NOT FOUND'}")
+
 YDL_OPTS = {
-    "format": "139/140/bestaudio/best",
-    "quiet": True,
-    "no_warnings": True,
-    "nocheckcertificate": True,
-    "proxy": _ydl_proxy,
+    "format": "bestaudio[ext=webm]/bestaudio/best",
+    "quiet": False,
+    "no_warnings": False,
+    "noplaylist": True,
+    "skip_download": True,
+    "geo_bypass": True,
+    "socket_timeout": 30,
+    "extractor_retries": 3,
     "cookiefile": _cookies_path if _cookies_found else None,
-    "http_headers": {"User-Agent": _android_ua},
-    "extractor_args": {
-        "youtube": {
-            "player_client": ["android"],
-            "player_skip": ["webpage", "configs"],
-        }
-    }
+    "extractor_args": {"youtube": {"player_client": ["web"]}},
+    "proxy": _ydl_proxy,
+    "http_headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept-Language": "en-US,en;q=0.9",
+    },
 }
 
 # ── FFmpeg Options ──────────────────────────────────────────────────────────
@@ -65,13 +58,47 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix=PREFIX, intents=intents, help_command=None)
 
-queues: dict[int, deque] = {}
-now_playing: dict[int, dict] = {}
+queues: dict = {}
+now_playing: dict = {}
 
 def get_queue(guild_id: int) -> deque:
     if guild_id not in queues:
         queues[guild_id] = deque()
     return queues[guild_id]
+
+
+# ── Audio fetching ───────────────────────────────────────────────────────────
+async def fetch_track(query: str):
+    loop = asyncio.get_event_loop()
+
+    def _extract():
+        search = query if query.startswith("http") else f"ytsearch1:{query}"
+        print(f"[yt-dlp] Fetching: {search}")
+        with yt_dlp.YoutubeDL(YDL_OPTS) as ydl:
+            try:
+                info = ydl.extract_info(search, download=False)
+                if "entries" in info:
+                    entries = [e for e in info["entries"] if e]
+                    if not entries:
+                        print("[yt-dlp] No entries found")
+                        return None
+                    info = entries[0]
+                url = info.get("url")
+                title = info.get("title", "Unknown")
+                print(f"[yt-dlp] Got: {title} | URL ok: {bool(url)}")
+                return {
+                    "title": title,
+                    "url": url,
+                    "thumbnail": info.get("thumbnail"),
+                    "duration": info.get("duration", 0),
+                    "webpage_url": info.get("webpage_url"),
+                }
+            except Exception as e:
+                print(f"[yt-dlp error] {e}")
+                return None
+
+    return await loop.run_in_executor(None, _extract)
+
 
 def format_duration(seconds: int) -> str:
     if not seconds: return "Live"
@@ -156,13 +183,8 @@ async def play(ctx: commands.Context, *, query: str):
     if not ctx.author.voice:
         return await ctx.send("❌ Join a voice channel first!")
 
-    msg = await ctx.send("🔍 Processing...")
-    tracks = await fetch_tracks(query)
-
-    if not tracks:
-        return await msg.edit(content="❌ Could not find the song or playlist.")
-
-    # Voice Connection
+async def ensure_voice(ctx: commands.Context):
+    """Return a valid connected VoiceClient, cleaning up any stale connection first."""
     vc = ctx.voice_client
     if vc is None:
         vc = await ctx.author.voice.channel.connect(self_deaf=True)
