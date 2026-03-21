@@ -43,7 +43,7 @@ else:
 # ── YT-DLP options ──────────────────────────────────────────────────────────
 YDL_OPTS = {
     # Broaden the format search to ensure we catch whatever YouTube allows
-    "format": "bestaudio/best",
+    "format": "140/bestaudio/best",
     "quiet": True,
     "no_warnings": True,
     "noplaylist": True,
@@ -56,7 +56,8 @@ YDL_OPTS = {
     "extractor_args": {
         "youtube": {
             "player_client": ["ios", "android", "mweb"],
-            "skip": ["dash", "hls"]
+            "skip": ["dash", "hls"],
+            "po_token": ["web+https://www.youtube.com/watch?v=7mQq2VNRGp4"],
         }
     },
     "proxy": _ydl_proxy or None,
@@ -64,6 +65,7 @@ YDL_OPTS = {
     "http_headers": {
         "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
     },
+    "source_address": "0.0.0.0", # Forces IPv4
 }
 
 # Build ffmpeg before_options — include http_proxy when a proxy is configured
