@@ -72,6 +72,10 @@ FFMPEG_OPTS = {
     "options": "-vn -loglevel warning",
 }
 
+# ── Define the Local FFmpeg Path ───────────────────────────────────────────
+# Use the exact output from your readlink command
+FFMPEG_EXE = "/home/ubuntu/discord-music-bot/ffmpeg-7.0.2-amd64-static/ffmpeg"
+
 # ── Bot setup ────────────────────────────────────────────────────────────────
 intents = discord.Intents.default()
 intents.message_content = True
@@ -156,7 +160,12 @@ def play_next(ctx: commands.Context):
 
     print(f"[playback] Playing: {track['title']} | URL: {track['url'][:80]}...")
 
-    source = discord.FFmpegPCMAudio(track["url"], **FFMPEG_OPTS)
+    source = discord.FFmpegPCMAudio(
+        track["url"],
+        executable=FFMPEG_EXE,
+        before_options=FFMPEG_OPTS["before_options"],
+        options=FFMPEG_OPTS["options"],
+    )
     source = discord.PCMVolumeTransformer(source, volume=0.8)
 
     def after(error):
