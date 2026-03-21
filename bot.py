@@ -12,20 +12,11 @@ if not TOKEN:
 
 PREFIX = "!"
 
-# ── Proxy config ─────────────────────────────────────────────────────────────
-# Set YDL_PROXY in your environment, e.g.:
-#   export YDL_PROXY="http://user:pass@host:port"
-# This routes both yt-dlp info extraction AND ffmpeg audio streaming through
-# the proxy — required on Oracle Cloud / other datacenter IPs blocked by YouTube.
+# ── Proxy & UA ─────────────────────────────────────────────────────────────
 _ydl_proxy = os.getenv("YDL_PROXY")
-print(f"[config] Proxy  : {_ydl_proxy or 'NOT SET (may fail on Oracle Cloud)'}")
+_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 # ── Cookie config ─────────────────────────────────────────────────────────────
-# Export cookies.txt from your browser using a Netscape-format cookie exporter
-# (e.g. "Get cookies.txt LOCALLY" Chrome extension) while logged into YouTube,
-# then place cookies.txt next to bot.py.
-# Required on Oracle Cloud — the web player client uses these cookies so
-# YouTube sees an authenticated session instead of a bot.
 _cookies_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
 _cookies_found = os.path.isfile(_cookies_path)
 if _cookies_found:
@@ -40,52 +31,42 @@ if _cookies_found:
 else:
     print(f"[config] Cookies: NOT FOUND at {_cookies_path}")
 
-
-_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-
 # ── YT-DLP options ──────────────────────────────────────────────────────────
 YDL_OPTS = {
-    # Broaden the format search to ensure we catch whatever YouTube allows
-    "format": "140/bestaudio/best",
+    # Prioritize 139 (48kbps) or 140 (128kbps) - lower bitrates are less likely to 403
+    "format": "139/140/bestaudio/best",
     "quiet": True,
     "no_warnings": True,
     "noplaylist": True,
     "skip_download": True,
     "geo_bypass": True,
-    "socket_timeout": 30,
-    "extractor_retries": 5,
-    # CRITICAL: Use 'ios' and 'android' clients. 
-    # YouTube often blocks 'web' but allows mobile apps to stream.
     "extractor_args": {
         "youtube": {
             "player_client": ["ios", "android", "mweb"],
             "skip": ["dash", "hls"],
-            "po_token": ["web+https://www.youtube.com/watch?v=7mQq2VNRGp4"],
         }
     },
     "proxy": _ydl_proxy or None,
     "cookiefile": _cookies_path if _cookies_found else None,
-    "http_headers": {
-        "User-Agent": _user_agent,
-    },
-    "source_address": "0.0.0.0", # Forces IPv4
+    "http_headers": { "User-Agent": _user_agent },
+    "source_address": "0.0.0.0",
     "nocheckcertificate": True,
 }
 
-# 2. Optimized FFmpeg options for Oracle Cloud
-# Added -headers to pass the User-Agent directly to the HTTP request
+# ── FFmpeg options ──────────────────────────────────────────────────────────
+# CRITICAL: We pass the User-Agent as a header and the proxy as a separate flag
 _ffmpeg_before = (
-    f"-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -nostdin "
+    f"-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 "
     f"-headers 'User-Agent: {_user_agent}\r\n' "
 )
 
 if _ydl_proxy:
-    # Use the proxy for the FFmpeg stream as well
+    # Explicitly add the proxy to the ffmpeg input
     _ffmpeg_before += f"-http_proxy {_ydl_proxy} "
 
 FFMPEG_OPTS = {
     "before_options": _ffmpeg_before,
-    "options": "-vn -loglevel error", # -loglevel error helps clean up your console
+    "options": "-vn",
 }
 
 # ── Bot setup ────────────────────────────────────────────────────────────────
