@@ -1,147 +1,99 @@
 # 🎵 Discord Music Bot — Setup Guide
 
-This bot uses a **static FFmpeg 7 engine** to bypass YouTube streaming restrictions. It is optimized for low-resource Linux instances (like Oracle Cloud) but also runs on Windows.
+## Requirements
+- Python 3.10+
+- FFmpeg installed on your system
+- A Discord Bot Token
 
 ---
 
-## 🐧 Linux Guide (Oracle Cloud / Ubuntu / Debian)
+## Step 1 — Install FFmpeg
 
-### 🛠 Prerequisites
-- **Python 3.10+**
-- **Discord Bot Token** (with Message Content Intent enabled)
-- **Linux Environment** (Ubuntu/Debian)
+**Windows:**
+1. Download from https://ffmpeg.org/download.html
+2. Extract and add the `bin/` folder to your system PATH
+3. Verify: `ffmpeg -version` in terminal
 
----
+**macOS:**
+```bash
+brew install ffmpeg
+```
 
-### 🚀 Step 1 — Install FFmpeg (Static Build)
-
-We use a static binary to avoid conflicts with outdated system versions.
-
-1. **Download:**
-   ```bash
-   wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
-   ```
-
-2. **Extract:**
-   ```bash
-   tar xvf ffmpeg-release-amd64-static.tar.xz
-   ```
-
-3. **Verify Path:**
-   Run `ls /home/ubuntu/discord-music-bot/ffmpeg-7.0.2-amd64-static/ffmpeg`.
-   Ensure this matches the `FFMPEG_EXE` path in `bot.py`.
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt update && sudo apt install ffmpeg -y
+```
 
 ---
 
-### 🤖 Step 2 — Discord Bot Setup
+## Step 2 — Create a Discord Bot
 
-1. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
-2. Create a **New Application**.
-3. Under **Bot**, enable **Message Content Intent**.
-4. Copy your **Token**.
-5. Use **OAuth2 → URL Generator** to invite the bot (Scopes: `bot`; Permissions: `Connect`, `Speak`, `Send Messages`).
+1. Go to https://discord.com/developers/applications
+2. Click **New Application** → give it a name
+3. Go to **Bot** → Click **Add Bot**
+4. Under **Privileged Gateway Intents**, enable:
+   - ✅ Message Content Intent
+5. Copy your **Bot Token**
+6. Go to **OAuth2 → URL Generator**:
+   - Scopes: `bot`
+   - Bot Permissions: `Send Messages`, `Connect`, `Speak`, `Read Message History`
+7. Open the generated URL to invite the bot to your server
 
 ---
 
-### ⚙️ Step 3 — Configuration
+## Step 3 — Configure the Bot
 
-Set your token as an environment variable:
+Open `bot.py` and replace the token on line 8:
+```python
+TOKEN = "YOUR_BOT_TOKEN_HERE"
+```
+
+Or set it as an environment variable (recommended):
+```bash
+# Windows
+set DISCORD_TOKEN=your_token_here
+
+# macOS/Linux
+export DISCORD_TOKEN=your_token_here
+```
+
+---
+
+## Step 4 — Install Dependencies & Run
 
 ```bash
-export DISCORD_TOKEN="YOUR_ACTUAL_TOKEN_HERE"
-# Optional: if using a proxy
-export YDL_PROXY="http://yourproxy:port"
-```
-
----
-
-### 🏃 Step 4 — Run
-
-```bash
-pip install -r requirements.txt
-python3.12 bot.py
-```
-
----
-
-## 🪟 Windows Guide
-
-### 🛠 Prerequisites
-- **Python 3.10+** — Download from [python.org](https://www.python.org/downloads/) (check **Add Python to PATH** during install)
-- **Discord Bot Token** (with Message Content Intent enabled)
-
----
-
-### 🚀 Step 1 — Install FFmpeg
-
-1. **Download** the latest Windows build from [ffmpeg.org/download.html](https://ffmpeg.org/download.html) (choose a Windows release, e.g. from gyan.dev).
-2. **Extract** the archive (e.g. to `C:\ffmpeg`).
-3. **Add to PATH:**
-   - Open **Start → Search "Environment Variables"**.
-   - Under **System Variables**, select `Path` → **Edit** → **New**.
-   - Add the path to the `bin` folder, e.g. `C:\ffmpeg\bin`.
-4. **Verify** by opening a new terminal and running:
-   ```powershell
-   ffmpeg -version
-   ```
-   Confirm it reports **version 7.x**.
-5. **Update `bot.py`:** Set `FFMPEG_EXE` to `"ffmpeg"` (since it is now on your PATH), or provide the full path e.g. `C:\ffmpeg\bin\ffmpeg.exe`.
-
----
-
-### 🤖 Step 2 — Discord Bot Setup
-
-1. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
-2. Create a **New Application**.
-3. Under **Bot**, enable **Message Content Intent**.
-4. Copy your **Token**.
-5. Use **OAuth2 → URL Generator** to invite the bot (Scopes: `bot`; Permissions: `Connect`, `Speak`, `Send Messages`).
-
----
-
-### ⚙️ Step 3 — Configuration
-
-Set your token as an environment variable in PowerShell:
-
-```powershell
-$env:DISCORD_TOKEN="YOUR_ACTUAL_TOKEN_HERE"
-# Optional: if using a proxy
-$env:YDL_PROXY="http://yourproxy:port"
-```
-
-Or set it permanently via **System Properties → Environment Variables**.
-
----
-
-### 🏃 Step 4 — Run
-
-```powershell
+cd discord-music-bot
 pip install -r requirements.txt
 python bot.py
 ```
 
+You should see: `✅ Logged in as YourBot#1234`
+
 ---
 
-## 🎵 Commands
+## Commands
 
 | Command | Description |
 |---|---|
-| `!play <query>` | Play a song or YouTube URL |
-| `!play <playlist>` | Queue an entire YouTube playlist |
-| `!skip` | Skip the current track |
-| `!pause` / `!resume` | Toggle playback |
-| `!stop` | Disconnect and clear queue |
-| `!queue` / `!q` | View the current queue |
-| `!nowplaying` / `!np` | Show detailed track info |
-| `!volume <0-100>` | Change volume |
-| `!shuffle` | Randomize the queue |
-| `!remove <index>` | Remove a specific song |
-| `!leave` | Kick the bot from voice |
+| `!play <song or URL>` | Play a song by name or YouTube URL |
+| `!play <playlist URL>` | Queue an entire YouTube playlist |
+| `!skip` | Skip the current song |
+| `!pause` | Pause playback |
+| `!resume` | Resume playback |
+| `!stop` | Stop music and disconnect |
+| `!queue` | Show the current queue |
+| `!nowplaying` | Show current song info |
+| `!volume <0-100>` | Adjust volume |
+| `!shuffle` | Shuffle the queue |
+| `!remove <#>` | Remove song from queue by position |
+| `!leave` | Disconnect bot from voice |
+| `!help` | Show all commands |
 
 ---
 
-## ⚠️ Troubleshooting
+## Troubleshooting
 
-- **403 Forbidden:** Ensure your `cookies.txt` is fresh and in the bot directory.
-- **Unrecognized Option:** Ensure the bot log says `✅ FFmpeg Engine Verified: ffmpeg version 7.x`. If it shows `4.x`, check your path in `bot.py`.
-- **Bot doesn't respond:** Double check that **Message Content Intent** is turned ON in the Discord Developer portal.
+**"FFmpeg not found"** → Make sure FFmpeg is installed and in your PATH  
+**"No audio"** → Check the bot has `Speak` permission in the voice channel  
+**"Token invalid"** → Regenerate the token in the Discord Developer Portal  
+**Bot doesn't respond** → Ensure `Message Content Intent` is enabled in the portal
