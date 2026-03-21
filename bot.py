@@ -14,15 +14,18 @@ if not TOKEN:
 PREFIX = "!"
 
 # ── Local FFmpeg Engine Path ────────────────────────────────────────────────
-# This points to the high-tech version you downloaded in your bot folder
+# Points to your FFmpeg 7 static binary
 FFMPEG_EXE = "/home/ubuntu/discord-music-bot/ffmpeg-7.0.2-amd64-static/ffmpeg"
 
 # Verification Check on Startup
 if not os.path.isfile(FFMPEG_EXE):
     print(f"❌ ERROR: FFmpeg not found at {FFMPEG_EXE}")
 else:
-    _v = subprocess.check_output([FFMPEG_EXE, "-version"]).decode().split('\n')[0]
-    print(f"✅ FFmpeg Engine Verified: {_v}")
+    try:
+        _v = subprocess.check_output([FFMPEG_EXE, "-version"]).decode().split('\n')[0]
+        print(f"✅ FFmpeg Engine Verified: {_v}")
+    except Exception as e:
+        print(f"⚠️ Warning: Could not verify FFmpeg version: {e}")
 
 # ── Proxy & Headers ─────────────────────────────────────────────────────────
 _ydl_proxy = os.getenv("YDL_PROXY")
@@ -55,16 +58,13 @@ YDL_OPTS = {
     }
 }
 
-# ── FFmpeg Options (Refined for Version 7) ──────────────────────────────────
-# We use double quotes inside the header string to prevent parsing errors
+# ── FFmpeg Options (Simplified for Version 7) ──────────────────────────────────
+# Removed '-4' to fix the "Unrecognized option" error.
+# FFmpeg 7 handles modern networking/routing much better automatically.
 _ffmpeg_before = (
-    f'-headers "User-Agent: {_android_ua}\r\nAccept: */*\r\nConnection: keep-alive\r\n" '
-    f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
+    f'-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 '
+    f'-headers "User-Agent: {_android_ua}\r\n"'
 )
-
-# If you get "Unrecognized option '4'", remove the '-4 ' below. 
-# FFmpeg 7 usually handles IPv4/IPv6 intelligently by default.
-_ffmpeg_before = "-4 " + _ffmpeg_before 
 
 if _ydl_proxy:
     _ffmpeg_before += f' -http_proxy "{_ydl_proxy}"'
@@ -135,7 +135,7 @@ def play_next(ctx: commands.Context):
     now_playing[guild_id] = track
     print(f"[playback] Starting: {track['title']}")
 
-    # USING THE NEW ENGINE HERE
+    # Using our local FFmpeg 7 engine with simplified options
     source = discord.FFmpegPCMAudio(
         track["url"],
         executable=FFMPEG_EXE,
