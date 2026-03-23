@@ -18,30 +18,30 @@ PREFIX = "!"
 FFMPEG_EXE = "/home/ubuntu/discord-music-bot/ffmpeg-7.0.2-amd64-static/ffmpeg"
 
 # Verification Check on Startup
-if not os.path.isfile(FFMPEG_EXE):
-    print(f"❌ ERROR: FFmpeg not found at {FFMPEG_EXE}")
-else:
-    _v = subprocess.check_output([FFMPEG_EXE, "-version"]).decode().split('\n')[0]
-    print(f"✅ FFmpeg Engine Verified: {_v}")
+if os.path.isfile(FFMPEG_EXE):
+    try:
+        _v = subprocess.check_output([FFMPEG_EXE, "-version"]).decode().split('\n')[0]
+        print(f"✅ FFmpeg Engine Verified: {_v}")
+    except: pass
 
 # ── Proxy & Headers ─────────────────────────────────────────────────────────
 _ydl_proxy = os.getenv("YDL_PROXY")
 _android_ua = "com.google.android.youtube/19.05.36 (Linux; U; Android 14; en_US; Pixel 8 Pro) gzip"
 _cookies_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
-_cookies_found = os.path.isfile(_cookies_path)
 
-# ── YT-DLP Options ──────────────────────────────────────────────────────────
+# ── YT-DLP Options (Optimized for Playlists & Extraction Fixes) ─────────────
 YDL_OPTS = {
-    "format": "139/140/bestaudio/best",
+    "format": "bestaudio/best",
     "quiet": True,
     "no_warnings": True,
     "nocheckcertificate": True,
     "proxy": _ydl_proxy,
-    "cookiefile": _cookies_path if _cookies_found else None,
+    "cookiefile": _cookies_path if os.path.isfile(_cookies_path) else None,
     "http_headers": {"User-Agent": _android_ua},
     "extractor_args": {
         "youtube": {
-            "player_client": ["android"],
+            # Critical Fix: Using ios/web_embedded to avoid extraction errors
+            "player_client": ["ios", "web_embedded"],
             "player_skip": ["webpage", "configs"],
         }
     }
@@ -79,16 +79,13 @@ def format_duration(seconds: int) -> str:
     h, m = divmod(m, 60)
     return f"{h}:{m:02d}:{s:02d}" if h else f"{m}:{s:02d}"
 
-# ── Audio fetching (Updated for Playlists) ───────────────────────────────────
+# ── Audio fetching ───────────────────────────────────────────────────────────
 async def fetch_tracks(query: str) -> list:
     loop = asyncio.get_event_loop()
     def _extract():
-        # Handle search vs URL
         search = query if query.startswith("http") else f"ytsearch1:{query}"
-        # We allow playlists here
         opts = YDL_OPTS.copy()
         opts["noplaylist"] = False 
-        
         with yt_dlp.YoutubeDL(opts) as ydl:
             try:
                 info = ydl.extract_info(search, download=False)
@@ -120,7 +117,6 @@ async def fetch_tracks(query: str) -> list:
 def play_next(ctx: commands.Context):
     guild_id = ctx.guild.id
     queue = get_queue(guild_id)
-
     if not queue:
         now_playing.pop(guild_id, None)
         asyncio.run_coroutine_threadsafe(ctx.send("✅ Queue finished."), bot.loop)
@@ -143,7 +139,6 @@ def play_next(ctx: commands.Context):
     def after(error):
         if error: print(f"[playback error] {error}")
         play_next(ctx)
-
     vc.play(source, after=after)
 
 # ── Commands ─────────────────────────────────────────────────────────────────
@@ -160,9 +155,8 @@ async def play(ctx: commands.Context, *, query: str):
     tracks = await fetch_tracks(query)
 
     if not tracks:
-        return await msg.edit(content="❌ Could not find the song or playlist.")
+        return await msg.edit(content="❌ YouTube error. Run `pip install -U --pre yt-dlp` on your server.")
 
-    # Voice Connection
     vc = ctx.voice_client
     if vc is None:
         vc = await ctx.author.voice.channel.connect(self_deaf=True)
@@ -174,11 +168,7 @@ async def play(ctx: commands.Context, *, query: str):
         t["requester"] = ctx.author
         queue.append(t)
 
-    if len(tracks) > 1:
-        await msg.edit(content=f"✅ Added **{len(tracks)}** songs from playlist to queue.")
-    else:
-        await msg.edit(content=f"✅ Queued: **{tracks[0]['title']}**")
-
+    await msg.edit(content=f"✅ Queued **{len(tracks)}** song(s): **{tracks[0]['title']}**")
     if not vc.is_playing() and not vc.is_paused():
         play_next(ctx)
 
@@ -204,29 +194,20 @@ async def resume(ctx):
 async def stop(ctx):
     get_queue(ctx.guild.id).clear()
     now_playing.pop(ctx.guild.id, None)
-    if ctx.voice_client:
-        await ctx.voice_client.disconnect()
-    await ctx.send("⏹️ Stopped and cleared queue.")
+    if ctx.voice_client: await ctx.voice_client.disconnect()
+    await ctx.send("⏹️ Stopped.")
 
 @bot.command(aliases=["q"])
 async def queue(ctx):
     q = get_queue(ctx.guild.id)
     current = now_playing.get(ctx.guild.id)
-    if not q and not current:
-        return await ctx.send("📭 Queue is empty.")
+    if not q and not current: return await ctx.send("📭 Queue is empty.")
     
-    desc = ""
-    if current:
-        desc += f"**Now Playing:** {current['title']}\n\n"
+    desc = f"**Now Playing:** {current['title']}\n\n**Up Next:**\n" if current else ""
+    for i, t in enumerate(list(q)[:10], 1):
+        desc += f"`{i}.` {t['title']}\n"
     
-    if q:
-        desc += "**Up Next:**\n"
-        for i, t in enumerate(list(q)[:10], 1):
-            desc += f"`{i}.` {t['title']}\n"
-        if len(q) > 10:
-            desc += f"*...and {len(q)-10} more*"
-
-    embed = discord.Embed(title="🎶 Current Queue", description=desc, color=0xFF0000)
+    embed = discord.Embed(title="🎶 Current Queue", description=desc or "Queue is empty.", color=0xFF0000)
     await ctx.send(embed=embed)
 
 @bot.command(aliases=["np"])
@@ -245,17 +226,15 @@ async def volume(ctx, vol: int):
         if 0 <= vol <= 100:
             ctx.voice_client.source.volume = vol / 100
             await ctx.send(f"🔊 Volume set to **{vol}%**")
-        else:
-            await ctx.send("❌ Volume must be between 0 and 100.")
 
 @bot.command()
 async def shuffle(ctx):
     q = get_queue(ctx.guild.id)
-    if len(q) < 2: return await ctx.send("❌ Not enough songs to shuffle.")
+    if len(q) < 2: return await ctx.send("❌ Need more songs.")
     shuffled = list(q)
     random.shuffle(shuffled)
     queues[ctx.guild.id] = deque(shuffled)
-    await ctx.send("🔀 Queue shuffled!")
+    await ctx.send("🔀 Shuffled!")
 
 @bot.command()
 async def remove(ctx, index: int):
@@ -265,31 +244,15 @@ async def remove(ctx, index: int):
         item = removed.pop(index - 1)
         queues[ctx.guild.id] = deque(removed)
         await ctx.send(f"🗑️ Removed: **{item['title']}**")
-    else:
-        await ctx.send("❌ Invalid index.")
 
 @bot.command()
 async def leave(ctx):
-    if ctx.voice_client:
-        await ctx.voice_client.disconnect()
-        await ctx.send("👋 Bye!")
+    if ctx.voice_client: await ctx.voice_client.disconnect()
+    await ctx.send("👋 Bye!")
 
 @bot.command()
 async def help(ctx):
-    embed = discord.Embed(title="🎵 Music Bot Help", color=0xFF0000)
-    cmds = [
-        ("!play <song/URL>", "Play song or playlist"),
-        ("!skip", "Skip current song"),
-        ("!pause/!resume", "Pause or resume"),
-        ("!stop", "Stop and clear queue"),
-        ("!queue/!q", "Show queue"),
-        ("!nowplaying/!np", "Show current song"),
-        ("!volume <0-100>", "Adjust volume"),
-        ("!shuffle", "Shuffle queue"),
-        ("!remove <#>", "Remove song at index"),
-        ("!leave", "Disconnect bot")
-    ]
-    for n, d in cmds: embed.add_field(name=n, value=d, inline=False)
+    embed = discord.Embed(title="🎵 Music Help", description="`!play`, `!skip`, `!pause`, `!resume`, `!stop`, `!queue`, `!nowplaying`, `!volume`, `!shuffle`, `!remove`, `!leave`", color=0xFF0000)
     await ctx.send(embed=embed)
 
 if __name__ == "__main__":
