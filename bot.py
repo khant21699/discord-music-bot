@@ -30,6 +30,7 @@ _android_ua = "com.google.android.youtube/19.05.36 (Linux; U; Android 14; en_US;
 _cookies_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt")
 
 # ── YT-DLP Options (Optimized for Playlists & Extraction Fixes) ─────────────
+# ── Updated YT-DLP Options ──────────────────────────────────────────────────
 YDL_OPTS = {
     "format": "bestaudio/best",
     "quiet": True,
@@ -37,11 +38,15 @@ YDL_OPTS = {
     "nocheckcertificate": True,
     "proxy": _ydl_proxy,
     "cookiefile": _cookies_path if os.path.isfile(_cookies_path) else None,
-    "http_headers": {"User-Agent": _android_ua},
+    "http_headers": {
+        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Mobile/15E148 Safari/604.1",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    },
     "extractor_args": {
         "youtube": {
-            # Critical Fix: Using ios/web_embedded to avoid extraction errors
-            "player_client": ["ios", "web_embedded"],
+            # Use 'ios' specifically, as it is currently the most successful at bypassing bot detection
+            "player_client": ["ios"], 
             "player_skip": ["webpage", "configs"],
         }
     }
